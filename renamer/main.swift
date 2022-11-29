@@ -7,50 +7,80 @@
 
 import SwiftUI
 
-
 // how to run:
-// swift ~/main/code/renamer/renamer/renamer/main.swift
+// swift ~/main/code/renamer/renamer/renamer/main.swift <month>
+// if you want to rename within a folder, based on the folder name:
+// swift ~/main/code/renamer/renamer/renamer/main.swift -f
 
 let fm = FileManager.default
 let path = fm.currentDirectoryPath
-let oldDays = (try? fm.contentsOfDirectory(atPath: path)) ?? []
+var contents = (try? fm.contentsOfDirectory(atPath: path)) ?? []
 
-// how to move things
-// try fm.moveItem(atPath: path.appending("/October 1, 2022"), toPath: path.appending("/Testtest123"))
-
-for day in oldDays {
-	let dayComp = day.split(separator: " ")
-	guard dayComp.count == 3 else { continue }
-	guard let dayString = getDay(from: dayComp[1]) else { continue }
-	guard let monthString = getMonth(from: dayComp[0]) else { continue }
-	guard let yearString = getYear(from: dayComp[2]) else { continue }
-	
-	let dateString = yearString + monthString + dayString
-	
-	let oldImages = (try? fm.contentsOfDirectory(atPath: path.appending("/" + day))) ?? []
-	
-	for image in oldImages {
-		if image.hasPrefix(".") { continue }
-		let oldPath = path.appending("/" + day + "/" + image)
-		let newPath: String
-		if image.hasPrefix("IMG_") {
-			newPath = path.appending("/" + day + "/" + dateString + image.dropFirst(3))
-		} else {
-			newPath = path.appending("/" + day + "/" + dateString + "_" + image)
-		}
-		try fm.moveItem(atPath: oldPath, toPath: newPath)
+if CommandLine.arguments.count > 1 {
+	if CommandLine.arguments[1] == "-f" {
+		renameImages(in: contents)
+	} else {
+		let month = CommandLine.arguments[1]
+		contents.removeAll(where: {
+			!$0.hasPrefix(month)
+		})
+		sortDays(in: contents)
 	}
-	
-	let newDayPath = path.appending("/" + yearString + monthString + "/" + dateString)
-	
-	if !((try? fm.contentsOfDirectory(atPath: path)) ?? []).contains(yearString + monthString) {
-		try fm.createDirectory(atPath: path.appending("/" + yearString + monthString), withIntermediateDirectories: false)
-	}
-	
-	try fm.moveItem(atPath: path.appending("/" + day), toPath: newDayPath)
+} else {
+	sortDays(in: contents)
 }
 
 print("finished!")
+
+func sortDays(in days: [String]) {
+	for day in days {
+		let dayComp = day.split(separator: " ")
+		guard dayComp.count == 3 else { continue }
+		guard let dayString = getDay(from: dayComp[1]) else { continue }
+		guard let monthString = getMonth(from: dayComp[0]) else { continue }
+		guard let yearString = getYear(from: dayComp[2]) else { continue }
+		
+		let dateString = yearString + monthString + dayString
+		
+		let oldImages = (try? fm.contentsOfDirectory(atPath: path.appending("/" + day))) ?? []
+		
+		for image in oldImages {
+			if image.hasPrefix(".") { continue }
+			let oldPath = path.appending("/" + day + "/" + image)
+			let newPath: String
+			if image.hasPrefix("IMG_") {
+				newPath = path.appending("/" + day + "/" + dateString + image.dropFirst(3))
+			} else {
+				newPath = path.appending("/" + day + "/" + dateString + "_" + image)
+			}
+			try? fm.moveItem(atPath: oldPath, toPath: newPath)
+		}
+		
+		let newDayPath = path.appending("/" + yearString + monthString + "/" + dateString)
+		
+		if !((try? fm.contentsOfDirectory(atPath: path)) ?? []).contains(yearString + monthString) {
+			try? fm.createDirectory(atPath: path.appending("/" + yearString + monthString), withIntermediateDirectories: false)
+		}
+		
+		try? fm.moveItem(atPath: path.appending("/" + day), toPath: newDayPath)
+	}
+}
+
+func renameImages(in images: [String]) {
+	guard let name = path.split(separator: "/").last else { return }
+	
+	for image in images {
+		if image.hasPrefix(".") { continue }
+		let oldPath = path.appending("/" + image)
+		let newPath: String
+		if image.hasPrefix("IMG_") {
+			newPath = path.appending("/" + name + image.dropFirst(3))
+		} else {
+			newPath = path.appending("/" + name + "_" + image)
+		}
+		try? fm.moveItem(atPath: oldPath, toPath: newPath)
+	}
+}
 
 func getDay(from day: Substring) -> String? {
 	let noCommaDay = day.dropLast()
@@ -89,28 +119,3 @@ func getYear(from year: Substring) -> String? {
 		return nil
 	}
 }
-
-// per day folder,
-// make the string that represents the day
-// add that string to all the image names within that folder
-// move the whole folder to be inside of the correct month folder
-
-//print(oldDays)
-
-//let documentsDirectory = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)[0]
-//let toURL = documentsDirectory.URLByAppendingPathComponent(to.lastPathComponent!)
-//
-//print("renaming file \(from.absoluteString) to \(to) url \(toURL)")
-//let fileManager = NSFileManager.defaultManager()
-//fileManager.delegate = self
-//do {
-//	try NSFileManager.defaultManager().moveItemAtURL(from, toURL: toURL)
-//} catch let error as NSError {
-//	print(error.localizedDescription)
-//} catch {
-//	print("error renaming recording")
-//}
-//dispatch_async(dispatch_get_main_queue(), {
-//	self.listRecordings()
-//	/
-//})
