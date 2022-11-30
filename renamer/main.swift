@@ -7,27 +7,27 @@
 
 import SwiftUI
 
-// how to run:
+// how to rename using date codes:
 // swift ~/main/code/renamer/renamer/renamer/main.swift <month>
-// if you want to rename within a folder, based on the folder name:
+// if you want to rename based on the folder name:
 // swift ~/main/code/renamer/renamer/renamer/main.swift -f
 
 let fm = FileManager.default
 let path = fm.currentDirectoryPath
-var contents = (try? fm.contentsOfDirectory(atPath: path)) ?? []
+var folders = (try? fm.contentsOfDirectory(atPath: path)) ?? []
 
 if CommandLine.arguments.count > 1 {
 	if CommandLine.arguments[1] == "-f" {
-		renameImages(in: contents)
+		renameImages(in: folders)
 	} else {
 		let month = CommandLine.arguments[1]
-		contents.removeAll(where: {
+		folders.removeAll(where: {
 			!$0.hasPrefix(month)
 		})
-		sortDays(in: contents)
+		sortDays(in: folders)
 	}
 } else {
-	sortDays(in: contents)
+	sortDays(in: folders)
 }
 
 print("finished!")
@@ -66,19 +66,21 @@ func sortDays(in days: [String]) {
 	}
 }
 
-func renameImages(in images: [String]) {
-	guard let name = path.split(separator: "/").last else { return }
-	
-	for image in images {
-		if image.hasPrefix(".") { continue }
-		let oldPath = path.appending("/" + image)
-		let newPath: String
-		if image.hasPrefix("IMG_") {
-			newPath = path.appending("/" + name + image.dropFirst(3))
-		} else {
-			newPath = path.appending("/" + name + "_" + image)
+func renameImages(in folders: [String]) {
+	for folder in folders {
+		let oldImages = (try? fm.contentsOfDirectory(atPath: path.appending("/" + folder))) ?? []
+		
+		for image in oldImages {
+			if image.hasPrefix(".") { continue }
+			let oldPath = path.appending("/" + folder + "/" + image)
+			let newPath: String
+			if image.hasPrefix("IMG_") {
+				newPath = path.appending("/" + folder + "/" + folder + image.dropFirst(3))
+			} else {
+				newPath = path.appending("/" + folder + "/" + folder + "_" + image)
+			}
+			try? fm.moveItem(atPath: oldPath, toPath: newPath)
 		}
-		try? fm.moveItem(atPath: oldPath, toPath: newPath)
 	}
 }
 
